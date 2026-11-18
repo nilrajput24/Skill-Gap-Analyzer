@@ -1,6 +1,6 @@
 # Student Skill Gap Analyzer & Personalized Learning Roadmap Provider
 
-> **Portfolio-Grade Full-Stack Web Application** built with **FastAPI**, **SQLAlchemy**, **SQLite**, **React 18**, **Vite 6**, and **Tailwind CSS v4**.
+> **Portfolio-Grade Full-Stack Web Application** built with **FastAPI**, **SQLAlchemy**, **Microsoft SQL Server 2022**, **React 18**, **Vite 6**, and **Tailwind CSS v4**.
 > Designed with strict adherence to evidence-based extraction, transparent metrics, and zero-fabrication principles.
 
 ---
@@ -10,20 +10,21 @@
 2. [End-to-End System Architecture](#-end-to-end-system-architecture)
 3. [Technology Stack](#-technology-stack)
 4. [Project Structure](#-project-structure)
-5. [Local Development Setup (Windows PowerShell)](#-local-development-setup-windows-powershell)
-6. [Automated Test Suite](#-automated-test-suite)
-7. [REST API Reference](#-rest-api-reference)
-8. [Engine & Algorithm Specifications](#-engine--algorithm-specifications)
+5. [Microsoft SQL Server 2022 Setup & Migration Guide](#-microsoft-sql-server-2022-setup--migration-guide)
+6. [Local Development Setup (Windows PowerShell)](#-local-development-setup-windows-powershell)
+7. [Automated Test Suite & SQL Server Verification](#-automated-test-suite--sql-server-verification)
+8. [REST API Reference](#-rest-api-reference)
+9. [Engine & Algorithm Specifications](#-engine--algorithm-specifications)
    - [Explainable Token Relevance](#1-explainable-token-relevance)
    - [Disambiguated Evidence Extraction](#2-disambiguated-evidence-extraction)
    - [Skill-Gap Categorization & Coverage Formula](#3-skill-gap-categorization--coverage-formula)
    - [Weekly Budget-Constrained Roadmap Scheduling](#4-weekly-budget-constrained-roadmap-scheduling)
    - [IT Domain Role Validation & Typo Tolerance](#5-it-domain-role-validation--typo-tolerance)
-9. [Extensibility Guide](#-extensibility-guide)
+10. [Extensibility Guide](#-extensibility-guide)
    - [Adding a New Permitted Source Connector](#adding-a-new-permitted-job-connector)
    - [Adding New Curated Learning Resources](#adding-new-curated-learning-resources)
-10. [Limitations, Privacy & Ethical Compliance](#-limitations-privacy--ethical-compliance)
-11. [Production Deployment & Database Persistence (Render Free Tier)](#-production-deployment--database-persistence-render-free-tier)
+11. [Limitations, Privacy & Ethical Compliance](#-limitations-privacy--ethical-compliance)
+12. [Cloud Production Deployment & Remote Database Infrastructure](#-cloud-production-deployment--remote-database-infrastructure)
 
 ---
 
@@ -84,11 +85,11 @@ flowchart TD
 | :--- | :--- | :--- | :--- |
 | **Backend Framework** | **FastAPI** | `^0.115.0` | High-performance asynchronous REST API framework |
 | **Language** | **Python** | `3.10+` (tested on `3.13`) | Core backend runtime and natural language processing |
-| **Database & ORM** | **SQLAlchemy** + **PostgreSQL** / **SQLite** | `^2.0.0` | Relational models, connection pooling, SQLite for dev, PostgreSQL (`psycopg2-binary`) for production persistence |
+| **Database & ORM** | **SQLAlchemy** + **Microsoft SQL Server 2022** | `^2.0.0` | Enterprise relational database via `pyodbc` & `ODBC Driver 17 for SQL Server`, connection pooling (`fast_executemany`, `pool_pre_ping`), with PostgreSQL & SQLite support |
 | **Password Security** | **Argon2id** (`pwdlib`) | `^0.2.0` | Modern, GPU-resistant memory-hard password hashing |
 | **Authentication** | **PyJWT** | `^2.10.0` | Stateless HMAC-SHA256 bearer tokens with 7-day session persistence |
 | **Web Scraping / Sanitization** | **BeautifulSoup4** | `^4.12.0` | Strips tags, scripts, and normalizes block-level whitespace |
-| **Test Suite** | **pytest**, **httpx** | `^9.0.0` | 72 isolated in-memory automated unit and e2e integration tests |
+| **Test Suite** | **pytest**, **httpx** | `^9.0.0` | 72 automated unit/integration tests + SQL Server live E2E verification suite |
 | **Frontend Framework** | **React** | `^18.3.1` | Declarative component UI library |
 | **Build Tool & Dev Server**| **Vite** | `^6.0.0` | Instant HMR and high-speed ES-module bundler |
 | **Styling** | **Tailwind CSS** | `^4.0.0` | Modern utility-first CSS via `@tailwindcss/vite` |
@@ -102,13 +103,16 @@ flowchart TD
 
 ```text
 e:\Skill Analyzer\
+├── migrate_sqlite_to_sqlserver.py  # Root convenience migration runner
 ├── backend/
+│   ├── migrate_sqlite_to_sqlserver.py # Idempotent SQLite to SQL Server 2022 migration engine
+│   ├── backups/                    # Automated pre-migration SQLite timestamped backups
 │   ├── app/
 │   │   ├── connectors/             # Pluggable ATS source connectors
 │   │   │   ├── base.py             # NormalizedJob model & BaseJobConnector interface
 │   │   │   ├── greenhouse.py       # Greenhouse public board API connector
 │   │   │   └── lever.py            # Lever public board API connector
-│   │   ├── models/                 # SQLAlchemy relational ORM models
+│   │   ├── models/                 # SQLAlchemy relational ORM models (MSSQL compatible)
 │   │   │   ├── user.py             # Users table with Argon2 hashes & relationships
 │   │   │   ├── student_profile.py  # Student profile (degree, graduation, bio, mobile, avatar)
 │   │   │   ├── password_reset.py   # Secure single-use hashed reset tokens
@@ -122,7 +126,7 @@ e:\Skill Analyzer\
 │   │   │   ├── archived_job_snapshots.json # Verified historical postings archive (Approach 1)
 │   │   │   └── industry_role_benchmarks.json # Standard technical competency frameworks (Approach 2)
 │   │   ├── routes/                 # FastAPI API route controllers
-│   │   │   ├── health.py           # /api/health with database probe
+│   │   │   ├── health.py           # /api/health with database probe (SELECT 1)
 │   │   │   ├── auth.py             # /api/auth/register, login, me, forgot/reset-password
 │   │   │   ├── profile.py          # GET/PUT /api/profile student profile endpoints
 │   │   │   ├── analyses.py         # CRUD analyses, job search, gap analysis
@@ -140,13 +144,26 @@ e:\Skill Analyzer\
 │   │   │   ├── skill_extractor.py  # Regex disambiguation & evidence extractor
 │   │   │   ├── gap_analyzer.py     # Gap categorization & coverage metric
 │   │   │   └── roadmap_generator.py# Budget-bounded priority weekly scheduler
-│   │   ├── config.py               # Pydantic BaseSettings loading from .env (auto-normalizes postgres://)
-│   │   ├── database.py             # SQLAlchemy engine with pool_pre_ping & connection recycling
+│   │   ├── config.py               # Settings with automatic SQL Server connection URL generator
+│   │   ├── database.py             # SQLAlchemy engine with MSSQL pooling & fast_executemany
 │   │   └── main.py                 # FastAPI application factory, CORS & route registration
 │   ├── tests/                      # Automated test suite (72 passing tests)
+│   │   ├── verify_sqlserver_e2e.py # Live SQL Server 2022 integration & migration verification
 │   │   ├── conftest.py             # In-memory SQLite fixtures & TestClient
-│   │   ├── test_health.py          # Health-check probe tests (2 tests)
+│   │   ├── test_health.py          # Health-check probe tests (4 tests)
 │   │   ├── test_auth.py            # Registration, login, JWT validation tests (9 tests)
+│   │   ├── test_profile.py         # Student profile GET/PUT and auth isolation tests (4 tests)
+│   │   ├── test_password_reset.py  # Forgot password, token hashing & reset tests (4 tests)
+│   │   ├── test_analyses.py        # Analysis CRUD, ownership scoping tests (7 tests)
+│   │   ├── test_connectors.py      # Greenhouse ATS integration & cleaning tests (5 tests)
+│   │   ├── test_lever_and_aggregation.py # Lever ATS & multi-source dedup tests (10 tests)
+│   │   ├── test_skill_extraction_and_gap.py # Skill regex disambiguation & gap tests (9 tests)
+│   │   ├── test_roadmap.py         # Weekly hour budget & curriculum tests (5 tests)
+│   │   ├── test_cached_snapshots.py # Snapshots, benchmarks & role rejection tests (14 tests)
+│   │   └── test_e2e_workflow.py    # Comprehensive full-student journey e2e test (1 test)
+│   ├── .env.example                # Backend configuration template with SQL Server docs
+│   ├── pytest.ini                  # Pytest configuration & warning filters
+│   └── requirements.txt            # Python dependencies (includes pyodbc & psycopg2-binary)
 │   │   ├── test_profile.py         # Student profile GET/PUT and auth isolation tests (4 tests)
 │   │   ├── test_password_reset.py  # Forgot password, token hashing & reset tests (4 tests)
 │   │   ├── test_analyses.py        # Analysis CRUD, ownership scoping tests (7 tests)
@@ -198,6 +215,88 @@ e:\Skill Analyzer\
 ├── .gitignore                      # Git ignore rules
 └── README.md                       # Complete project documentation
 ```
+
+---
+
+## 🗄️ Microsoft SQL Server 2022 Setup & Migration Guide
+
+This application uses **Microsoft SQL Server 2022** as its primary enterprise relational database.
+
+### 1. Prerequisites & System Requirements
+- **SQL Server**: Microsoft SQL Server 2022 (Express, Developer, or Enterprise edition).
+- **Instance Name**: Default named instance `.\SQLEXPRESS` (or `localhost` / custom instance).
+- **ODBC Driver**: **ODBC Driver 17 for SQL Server** (64-bit) (or ODBC Driver 18).
+  - Verify installed driver in PowerShell:
+    ```powershell
+    Get-OdbcDriver -Name "*SQL Server*" | Select-Object Name, Platform
+    ```
+- **Python Drivers**: `pyodbc>=5.1.0` and `sqlalchemy>=2.0.30`.
+
+### 2. SQL Server Instance & Database Creation
+1. Verify the SQL Server service is active:
+   ```powershell
+   Get-Service "MSSQL`$SQLEXPRESS" | Select-Object Status, DisplayName
+   ```
+2. Create the application database `StudentSkillGapAnalyzer` (if not already created):
+   - Using **SQL Server Management Studio (SSMS)** or PowerShell:
+     ```sql
+     CREATE DATABASE StudentSkillGapAnalyzer;
+     GO
+     ```
+   - Alternatively, the included migration script will automatically connect to `master` and create `StudentSkillGapAnalyzer` if it does not exist.
+
+### 3. Environment Variable Configuration
+In `backend/.env`, configure the connection string using URL-encoded parameters for SQLAlchemy + pyodbc:
+
+#### Local Windows Authentication (Trusted Connection):
+```dotenv
+DATABASE_URL="mssql+pyodbc:///?odbc_connect=DRIVER%3D%7BODBC+Driver+17+for+SQL+Server%7D%3BSERVER%3D.%5CSQLEXPRESS%3BDATABASE%3DStudentSkillGapAnalyzer%3BTrusted_Connection%3Dyes%3BTrustServerCertificate%3Dyes%3B"
+```
+
+#### SQL Server Authentication (Username & Password):
+```dotenv
+DATABASE_URL="mssql+pyodbc:///?odbc_connect=DRIVER%3D%7BODBC+Driver+17+for+SQL+Server%7D%3BSERVER%3D.%5CSQLEXPRESS%3BDATABASE%3DStudentSkillGapAnalyzer%3BUID%3Dyour_username%3BPWD%3Dyour_password%3BTrustServerCertificate%3Dyes%3B"
+```
+
+The application's `config.py` automatically validates and normalizes raw ODBC strings, Azure SQL URLs, or PostgreSQL connections.
+
+### 4. Running the SQLite to SQL Server Migration
+The repository includes an idempotent, production-grade migration engine `backend/migrate_sqlite_to_sqlserver.py`:
+
+```powershell
+# From the backend directory with active virtual environment:
+python migrate_sqlite_to_sqlserver.py
+
+# Or from the repository root:
+python migrate_sqlite_to_sqlserver.py --sqlite-path backend/app.db
+```
+
+#### What the Migration Engine Does:
+1. **Automated Pre-Migration Backup**: Saves a timestamped snapshot of the SQLite database into `backend/backups/app_backup_<timestamp>.db` before any reads occur.
+2. **DDL Auto-Generation**: Executes SQLAlchemy `Base.metadata.create_all()` against SQL Server to ensure all 8 tables, indexes, and foreign keys exist.
+3. **Foreign-Key Safe Insertion Order**:
+   - `users` ➔ `student_profiles` ➔ `password_reset_tokens` ➔ `analyses` ➔ `student_skills` ➔ `job_snapshots` ➔ `required_skills` ➔ `roadmap_items`
+4. **Identity Column Handling**: Enforces `SET IDENTITY_INSERT [<table_name>] ON` and `OFF` per table to preserve original primary keys across related records.
+5. **Sequence Reseeding**: Executes `DBCC CHECKIDENT ('[table]', RESEED, max_id)` so newly created records in SQL Server receive incremented IDs without primary key collisions.
+6. **Data Type & NULL Fidelity**: Accurately maps SQLite datetimes to SQL Server `DATETIME2`, booleans to `BIT`, and floats (`estimated_hours`, `confidence`).
+7. **Idempotence & Duplicate Prevention**: Checks existing IDs prior to insertion; running the script multiple times is completely safe and produces zero duplicates.
+8. **Relational Integrity Report**: Compares record counts between SQLite and SQL Server and validates that 0 orphaned foreign keys exist.
+
+### 5. Verifying Live SQL Server Operation
+Run the dedicated end-to-end verification script against the live `StudentSkillGapAnalyzer` database:
+
+```powershell
+python backend/tests/verify_sqlserver_e2e.py
+```
+This test suite verifies:
+- Active SQL Server engine connection and version
+- Migrated data access (Nilesh account and 21 historical analyses)
+- Student registration, duplicate email rejection, and Argon2id password verification
+- JWT authentication and `/api/auth/me`
+- Student profile CRUD operations
+- Password reset token hashing and password reset
+- Analysis and roadmap creation with IT-domain role validation
+- Multi-user tenant isolation (IDOR protection)
 
 ---
 
@@ -779,53 +878,99 @@ Every resource MUST be genuinely free, without paywalls or hidden trial credit r
 
 ---
 
-## ☁️ Production Deployment & Database Persistence (Render Free Tier)
+## ☁️ Cloud Production Deployment & Remote Database Infrastructure
 
-When deploying on Render's free tier, understanding container lifecycle and data persistence is critical to prevent user accounts from disappearing.
+### Local Development vs. Cloud Deployment Architecture
 
-### Root Cause of Missing Accounts on Render Free Tier
+> [!WARNING]
+> Your local SQL Server 2022 instance (`.\SQLEXPRESS`) runs on your personal Windows workstation and is **not reachable** from cloud deployment platforms like Render without specialized tunneling or public hosting.
 
-Render Web Services run inside **ephemeral Docker containers**:
-1. When a free web service receives no traffic for 15 minutes, Render spins down the container to 0 instances.
-2. When a new request arrives, Render spins up a **brand-new container** with a fresh file system.
-3. If SQLite (`sqlite:///./app.db`) is used on a Web Service without a persistent disk, **the database file is wiped on every spin-down or redeploy**.
-4. Consequently, any student accounts registered on the previous container instance vanish, and subsequent logins fail.
+To deploy this application to production while maintaining persistent enterprise relational storage, follow the architecture guide below.
 
-### Solution: Free Render PostgreSQL Database
+```
++-----------------------------------------------------------------------------------+
+| LOCAL WINDOWS DEVELOPMENT                                                         |
+| Fast, offline, secure Windows Authentication                                      |
+|                                                                                   |
+| FastAPI Backend  ----(pyodbc / ODBC 17)---->  Microsoft SQL Server 2022 Express   |
+| [http://localhost:8000]                       Instance: .\SQLEXPRESS              |
+|                                               Database: StudentSkillGapAnalyzer   |
+|                                               Auth    : Integrated Security       |
++-----------------------------------------------------------------------------------+
 
-Render provides a free managed PostgreSQL database with persistent storage that survives container restarts.
++-----------------------------------------------------------------------------------+
+| CLOUD PRODUCTION (Render / Azure / AWS)                                           |
+| High availability, persistent storage, SSL encryption                             |
+|                                                                                   |
+| Render Web Service  ----(ODBC 17/18 / SSL)---->  Remote Managed SQL Server        |
+| [https://app.onrender.com]                       (Azure SQL / AWS RDS / Postgres) |
+|                                                  Port: 1433 (or 5432)             |
+|                                                  Auth: Strong SQL Credentials     |
++-----------------------------------------------------------------------------------+
+```
 
-#### Step 1: Create a PostgreSQL Instance on Render
-1. Log in to the [Render Dashboard](https://dashboard.render.com).
-2. Click **New +** > **PostgreSQL**.
-3. Set a name (e.g., `skill-analyzer-db`) and select the **Free** tier.
-4. Click **Create Database**.
+---
 
-#### Step 2: Configure Environment Variables in the Web Service
-1. In your Render PostgreSQL dashboard, copy the **Internal Database URL** (e.g., `postgres://user:password@dpg-xxx:5432/dbname`).
-2. Go to your **Backend Web Service** settings on Render > **Environment**.
-3. Add or update the following environment variables:
+### Option A: Connecting Cloud Application to a Remote Microsoft SQL Server
 
-| Variable | Recommended Value | Purpose |
-| :--- | :--- | :--- |
-| `DATABASE_URL` | `postgres://user:pass@dpg-xxx:5432/dbname` | Render Internal Database URL. The backend automatically normalizes `postgres://` to `postgresql://` and configures connection pooling (`pool_pre_ping=True`, `pool_recycle=300`). |
-| `JWT_SECRET` | *(64-character random string)* | Strong cryptographic secret for signing bearer tokens. |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | `10080` | Sets JWT session validity to 7 days, preventing premature student logouts. |
-| `FRONTEND_ORIGIN` | `https://your-frontend.onrender.com` | Allowed CORS origin for the React SPA. |
-| `SMTP_HOST` | *(Optional, e.g., `smtp.gmail.com`)* | Host for outgoing password reset emails. |
-| `SMTP_PORT` | `587` | Port for TLS email dispatch. |
-| `SMTP_USER` | *(Optional, e.g., `your-email@gmail.com`)* | SMTP authentication email. |
-| `SMTP_PASSWORD` | *(Optional, e.g., Google App Password)* | SMTP application password. |
-| `SMTP_FROM_EMAIL` | `noreply@skillanalyzer.dev` | From header for password reset emails. |
+If you choose to use Microsoft SQL Server in production (e.g., **Azure SQL Database**, **AWS RDS for SQL Server**, or a dedicated cloud VM):
 
-> [!NOTE]
-> If SMTP credentials are not configured, password reset tokens are safely logged to the backend service stdout/console logs for convenient testing.
+#### 1. Required Infrastructure & Network Configuration:
+- **Public FQDN or IP**: The SQL Server must have a public hostname (e.g., `myserver.database.windows.net` or `sql.mycompany.com`).
+- **Firewall & NSG Configuration**: Inbound TCP traffic on port `1433` must be permitted for the cloud application's IP range (or set to allow Azure services / public client IP).
+- **SQL Authentication**: Remote cloud databases cannot use Windows Active Directory Integrated Security from Linux containers. You must enable mixed-mode authentication and create a dedicated SQL user:
+  ```sql
+  CREATE LOGIN skill_app_user WITH PASSWORD = 'StrongProductionPassword!123';
+  CREATE USER skill_app_user FOR LOGIN skill_app_user;
+  ALTER ROLE db_owner ADD MEMBER skill_app_user;
+  ```
+- **ODBC Driver on Linux Containers**: Render uses Linux Docker containers. If running SQL Server on Render, the Docker environment must install Microsoft's Linux ODBC driver:
+  ```bash
+  curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+  curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
+  apt-get update && ACCEPT_EULA=Y apt-get install -y msodbcsql17 unixodbc-dev
+  ```
 
-#### Step 3: Frontend Cold-Start Protection
-Render free web services spin down after inactivity and take 30–50 seconds to warm up on the first request. The frontend includes:
-- An increased Axios timeout of **75 seconds** (`frontend/src/api/axios.js`), preventing premature request abortion.
-- A dynamic warm-up banner on the Login screen informing students if the server takes longer than 4 seconds to respond.
-- Resilient auth initialization in `AuthContext.jsx` that preserves local credentials during transient connection timeouts.
+#### 2. Cloud Environment Variables (`DATABASE_URL`):
+Set the `DATABASE_URL` environment variable in your cloud dashboard:
+```dotenv
+DATABASE_URL="mssql+pyodbc:///?odbc_connect=DRIVER%3D%7BODBC+Driver+17+for+SQL+Server%7D%3BSERVER%3Dmyserver.database.windows.net%2C1433%3BDATABASE%3DStudentSkillGapAnalyzer%3BUID%3Dskill_app_user%3BPWD%3DStrongProductionPassword!123%3BEncrypt%3Dyes%3BTrustServerCertificate%3Dno%3BConnection+Timeout%3D30%3B"
+```
+
+---
+
+### Option B: Zero-Maintenance Managed PostgreSQL on Render
+
+Render provides a built-in managed PostgreSQL database on its free tier. The backend automatically detects PostgreSQL URLs and switches drivers seamlessly without any code changes:
+
+1. In [Render Dashboard](https://dashboard.render.com), click **New +** > **PostgreSQL**.
+2. Copy the **Internal Database URL** (e.g. `postgres://user:pass@dpg-xxx:5432/dbname`).
+3. Set `DATABASE_URL` in your Web Service environment settings.
+4. The application automatically normalizes `postgres://` to `postgresql://` and configures connection pooling (`pool_pre_ping=True`, `pool_recycle=300`).
+
+---
+
+### Production Environment Variables Reference
+
+| Variable | Local Development | Cloud Production (Render / Azure) | Purpose |
+| :--- | :--- | :--- | :--- |
+| `DATABASE_URL` | `mssql+pyodbc:///?odbc_connect=...` (`.\SQLEXPRESS`) | Remote SQL Server or Render PostgreSQL URL | Primary relational database connection |
+| `ENVIRONMENT` | `development` | `production` | Enables production security policies |
+| `JWT_SECRET` | *(local secret)* | *(64-character cryptographic random string)* | Signs bearer tokens |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `10080` (7 days) | `10080` (7 days) | Prevents premature student logouts |
+| `FRONTEND_ORIGIN` | `http://localhost:5173` | `https://your-frontend.onrender.com` | Allowed CORS origin |
+| `SMTP_HOST` | *(optional)* | `smtp.gmail.com` / SendGrid | Password reset email delivery |
+| `SMTP_PORT` | `587` | `587` | SMTP TLS port |
+| `SMTP_USER` | *(optional)* | `your-email@gmail.com` | SMTP username |
+| `SMTP_PASSWORD` | *(optional)* | App Password | SMTP password |
+
+---
+
+### Frontend Cold-Start & Network Protection
+Render free web services spin down after 15 minutes of inactivity:
+- **Axios Timeout (75s)**: Configured in `frontend/src/api/axios.js` to allow backend wake-up without aborting.
+- **Dynamic Wake-up Banner**: Displays a non-intrusive alert if the server takes > 4 seconds to respond.
+- **Session Preservation**: Prevents token eviction on transient connection timeouts.
 
 ---
 

@@ -3,14 +3,20 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from app.config import settings
 
-# SQLite requires check_same_thread=False when used across different request threads in FastAPI
 connect_args = {}
 engine_kwargs = {"echo": False}
 
-if settings.database_url.startswith("sqlite"):
+if "sqlite" in settings.database_url:
     connect_args["check_same_thread"] = False
+elif "mssql" in settings.database_url:
+    # Microsoft SQL Server connection pooling and execution settings
+    engine_kwargs["pool_pre_ping"] = True
+    engine_kwargs["pool_recycle"] = 300
+    engine_kwargs["pool_size"] = 10
+    engine_kwargs["max_overflow"] = 20
+    engine_kwargs["fast_executemany"] = True
 else:
-    # Production PostgreSQL connection health check & recycle
+    # PostgreSQL / other production databases
     engine_kwargs["pool_pre_ping"] = True
     engine_kwargs["pool_recycle"] = 300
 
@@ -44,6 +50,7 @@ def get_db() -> Generator[Session, None, None]:
 def check_db_connection(db: Session) -> bool:
     """
     Execute a minimal query to verify active connectivity with the database engine.
+    Compatible with Microsoft SQL Server, PostgreSQL, and SQLite.
     """
     try:
         db.execute(text("SELECT 1"))
